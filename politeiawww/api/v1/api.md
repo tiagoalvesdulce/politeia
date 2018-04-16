@@ -1164,7 +1164,7 @@ Retrieve all active votes
 Note that the webserver does not interpret the plugin structures. These are
 forwarded as-is to the politeia daemon.
 
-**Route:** `POST /v1/proposals/activevote`
+**Route:** `GET /v1/proposals/activevote`
 
 **Params:**
 
