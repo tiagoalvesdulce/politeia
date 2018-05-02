@@ -35,6 +35,7 @@ type BackendComment struct {
 	// www additional fields
 	Version uint64
 	Action  CommentActionT
+	Receipt string // Server signature of Token+ParentID+Comment+CommentID
 
 	// Meta-data
 	Timestamp int64  // Received UNIX timestamp
@@ -58,6 +59,7 @@ func backendCommentToComment(bec BackendComment) www.Comment {
 		ParentID:  bec.ParentID,
 		Comment:   bec.Comment,
 		Signature: bec.Signature,
+		Receipt:   bec.Receipt,
 	}
 }
 
@@ -116,6 +118,7 @@ func (b *backend) addComment(c www.NewComment, userID uint64) (*www.NewCommentRe
 		ParentID:  c.ParentID,
 		Comment:   c.Comment,
 		Signature: c.Signature,
+		Receipt:   c.Receipt,
 	}
 	cb, err := json.Marshal(comment)
 	if err != nil {

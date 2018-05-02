@@ -507,13 +507,14 @@ type NewComment struct {
 // something went wrong.
 type NewCommentReply struct {
 	CommentID string `json:"commentid"` // Comment ID
+	Receipt   string `json:"receipt"`   // Signature of NewComment.Signature+CommentID
 }
 
 // GetComments retrieve all comments for a given proposal.
 type GetComments struct{}
 
 // Comment is the structure that describes the full server side content.  It
-// includes server side meta-data as well.
+// includes server side meta-data as well. Note that the receipt is the server side
 type Comment struct {
 	// Meta-data
 	Timestamp int64  `json:"timestamp"` // Received UNIX timestamp
@@ -524,7 +525,8 @@ type Comment struct {
 	Token     string `json:"token"`     // Censorship token
 	ParentID  string `json:"parentid"`  // Parent comment ID
 	Comment   string `json:"comment"`   // Comment
-	Signature string `json:"signature"` // Signature of Token+ParentID+Comment
+	Signature string `json:"signature"` // Client Signature of Token+ParentID+Comment
+	Receipt   string `json:"receipt"`   // Server signature of the client Signature
 }
 
 // GetCommentsReply returns the provided number of comments.
