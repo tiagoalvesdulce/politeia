@@ -118,7 +118,7 @@ func (b *backend) addComment(c www.NewComment, userID uint64) (*www.NewCommentRe
 		ParentID:  c.ParentID,
 		Comment:   c.Comment,
 		Signature: c.Signature,
-		Receipt:   c.Receipt,
+		//Receipt:   c.Receipt, // XXX
 	}
 	cb, err := json.Marshal(comment)
 	if err != nil {

@@ -391,16 +391,8 @@ func (g *gitBackEnd) validateVoteBit(token, bit string) error {
 		return err
 	}
 
-	err = g.lock.Lock(LockDuration)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err := g.lock.Unlock()
-		if err != nil {
-			log.Errorf("validateVoteBits unlock error: %v", err)
-		}
-	}()
+	g.Lock()
+	defer g.Unlock()
 	if g.shutdown {
 		return backend.ErrShutdown
 	}
@@ -441,7 +433,7 @@ func (g *gitBackEnd) validateVoteBit(token, bit string) error {
 	return _validateVoteBit(*vote, b)
 }
 
-func (g *gitBackEnd) pluginCastVotes(payload string) (string, error) {
+func (g *gitBackEnd) _pluginCastVotes(payload string) (string, error) {
 	log.Tracef("pluginCastVotes: %v", payload)
 	votes, err := decredplugin.DecodeCastVotes([]byte(payload))
 	if err != nil {
@@ -519,17 +511,8 @@ func (g *gitBackEnd) pluginCastVotes(payload string) (string, error) {
 	}
 
 	// Store votes
-	err = g.lock.Lock(LockDuration)
-	if err != nil {
-		return "", fmt.Errorf("pluginCastVotes: lock error try again "+
-			"later: %v", err)
-	}
-	defer func() {
-		err := g.lock.Unlock()
-		if err != nil {
-			log.Errorf("pluginCastVotes unlock error: %v", err)
-		}
-	}()
+	g.Lock()
+	defer g.Unlock()
 	if g.shutdown {
 		return "", backend.ErrShutdown
 	}
@@ -704,6 +687,10 @@ func (g *gitBackEnd) pluginCastVotes(payload string) (string, error) {
 	return string(reply), nil
 }
 
+func (g *gitBackEnd) pluginCastVotes(payload string) (string, error) {
+	return "", fmt.Errorf("boom")
+}
+
 func (g *gitBackEnd) pluginProposalVotes(payload string) (string, error) {
 	log.Tracef("pluginProposalVotes: %v", payload)
 
@@ -713,18 +700,8 @@ func (g *gitBackEnd) pluginProposalVotes(payload string) (string, error) {
 	}
 
 	// Lock tree while we pull out the results
-	err = g.lock.Lock(LockDuration)
-	if err != nil {
-		return "", fmt.Errorf("pluginProposalVotes: lock error "+
-			"try again later: %v", err)
-	}
-	defer func() {
-		err := g.lock.Unlock()
-		if err != nil {
-			log.Errorf("pluginProposalVotes unlock error: %v",
-				err)
-		}
-	}()
+	g.Lock()
+	defer g.Unlock()
 	if g.shutdown {
 		return "", backend.ErrShutdown
 	}
