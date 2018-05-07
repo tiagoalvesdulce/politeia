@@ -251,3 +251,62 @@ func TestJournalConcurrentSame(t *testing.T) {
 
 	os.RemoveAll(dir)
 }
+
+func TestJournalCopy(t *testing.T) {
+	dir, err := ioutil.TempDir("", "journal")
+	t.Logf("TestJournalConcurrentCopy: %v", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	j := NewJournal()
+
+	// Test journal
+	count := 1000
+	filename := filepath.Join(dir, "file1")
+	for i := 0; i < count; i++ {
+		err = j.Journal(filename, fmt.Sprintf("%v", i))
+		if err != nil {
+			t.Fatalf("%v: %v", i, err)
+		}
+	}
+
+	err = testExact(j, filename, count)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = j.Close(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Copy journal fail
+	destination := filepath.Join(dir, "") // Try to overwrite dir
+	err = j.Copy(filename, destination)
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+
+	// Copy journal fail 2
+	destination = filepath.Join(dir, "d", "..", "file1") // Try to overwrite same file
+	err = j.Copy(filename, destination)
+	if err != ErrSameFile {
+		t.Fatalf("Expected ErrSameFile")
+	}
+
+	// Copy journal
+	destination = filepath.Join(dir, "file2")
+	err = j.Copy(filename, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test Copy
+	err = testExact(j, destination, count)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.RemoveAll(dir)
+}
