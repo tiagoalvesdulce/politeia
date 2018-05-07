@@ -193,3 +193,61 @@ func TestJournalConcurrent(t *testing.T) {
 
 	os.RemoveAll(dir)
 }
+
+func TestJournalConcurrentSame(t *testing.T) {
+	dir, err := ioutil.TempDir("", "journal")
+	t.Logf("TestJournalConcurrentSame: %v", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	j := NewJournal()
+
+	var wg sync.WaitGroup
+	count := 10000
+	check := make(map[int]struct{})
+	filename := filepath.Join(dir, "file1")
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		check[i] = struct{}{}
+		go func(k int) {
+			defer wg.Done()
+			err = j.Journal(filename, fmt.Sprintf("%v", k))
+			if err != nil {
+				t.Fatalf("%v: %v", k, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Read back and make sure all entries exist
+	err = j.Open(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := 0
+	for ; ; i++ {
+		err = j.Replay(filename, func(s string) error {
+			delete(check, i)
+			return nil
+		})
+		if err == io.EOF {
+			if i > count {
+				t.Fatalf("ran too many times")
+			}
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if i != count {
+		t.Fatalf("invalid count: %v %v", i, count)
+	}
+	if len(check) != 0 {
+		t.Fatalf("len != 0")
+	}
+
+	os.RemoveAll(dir)
+}
