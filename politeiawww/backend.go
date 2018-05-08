@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,9 +34,8 @@ const (
 	indexFile = "index.md"
 
 	// mdStream* indicate the metadata stream used for various types
-	mdStreamGeneral  = 0 // General information for this proposal
-	mdStreamComments = 1 // Comments
-	mdStreamChanges  = 2 // Changes to record
+	mdStreamGeneral = 0 // General information for this proposal
+	mdStreamChanges = 2 // Changes to record
 	// Note that 13 is in use by the decred plugin
 	// Note that 14 is in use by the decred plugin
 	// Note that 15 is in use by the decred plugin
@@ -54,21 +51,19 @@ type MDStreamChanges struct {
 type backend struct {
 	sync.RWMutex // lock for inventory and comments
 
-	db                 database.Database
-	cfg                *config
-	params             *chaincfg.Params
-	client             *http.Client // politeiad client
-	commentJournalDir  string
-	commentJournalFile string
-	userPubkeys        map[string]string // [pubkey][userid]
+	db          database.Database
+	cfg         *config
+	params      *chaincfg.Params
+	client      *http.Client      // politeiad client
+	userPubkeys map[string]string // [pubkey][userid]
 
 	// These properties are only used for testing.
 	test                   bool
 	verificationExpiryTime time.Duration
 
 	// Following entries require locks
-	comments  map[string]map[uint64]BackendComment // [token][parent]comment
-	commentID uint64                               // current comment id
+	//comments  map[string]map[uint64]BackendComment // [token][parent]comment
+	//commentID uint64
 
 	// inventory will eventually replace inventory
 	inventory map[string]*inventoryRecord // Current inventory
@@ -1370,10 +1365,11 @@ func (b *backend) ProcessSetProposalStatus(sps www.SetProposalStatus, user *data
 		// Flush comments while here, we really should make the
 		// comments flow with the SetUnvettedStatus command but for now
 		// do it separately.
-		err := b.flushCommentJournal(sps.Token)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
+		//err := b.flushCommentJournal(sps.Token)
+		//if err != nil && !os.IsNotExist(err) {
+		//	return nil, err
+		//}
+		log.Errorf("XXX not flushing comment journal")
 
 		challenge, err := util.Random(pd.ChallengeSize)
 		if err != nil {
@@ -1429,176 +1425,180 @@ func (b *backend) ProcessSetProposalStatus(sps www.SetProposalStatus, user *data
 
 // ProcessProposalDetails tries to fetch the full details of a proposal from politeiad.
 func (b *backend) ProcessProposalDetails(propDetails www.ProposalsDetails, user *database.User) (*www.ProposalDetailsReply, error) {
-	var reply www.ProposalDetailsReply
-	challenge, err := util.Random(pd.ChallengeSize)
-	if err != nil {
-		return nil, err
-	}
+	log.Debugf("ProcessProposalDetails")
+	return nil, fmt.Errorf("ProcessProposalDetails")
+	//var reply www.ProposalDetailsReply
+	//challenge, err := util.Random(pd.ChallengeSize)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	b.RLock()
-	p, ok := b.inventory[propDetails.Token]
-	if !ok {
-		b.RUnlock()
-		return nil, www.UserError{
-			ErrorCode: www.ErrorStatusProposalNotFound,
-		}
-	}
-	b.RUnlock()
-	cachedProposal := convertPropFromInventoryRecord(p, b.userPubkeys)
+	//b.RLock()
+	//p, ok := b.inventory[propDetails.Token]
+	//if !ok {
+	//	b.RUnlock()
+	//	return nil, www.UserError{
+	//		ErrorCode: www.ErrorStatusProposalNotFound,
+	//	}
+	//}
+	//b.RUnlock()
+	//cachedProposal := convertPropFromInventoryRecord(p, b.userPubkeys)
 
-	var isVettedProposal bool
-	var requestObject interface{}
-	if cachedProposal.Status == www.PropStatusPublic {
-		isVettedProposal = true
-		requestObject = pd.GetVetted{
-			Token:     propDetails.Token,
-			Challenge: hex.EncodeToString(challenge),
-		}
-	} else {
-		isVettedProposal = false
-		requestObject = pd.GetUnvetted{
-			Token:     propDetails.Token,
-			Challenge: hex.EncodeToString(challenge),
-		}
-	}
+	//var isVettedProposal bool
+	//var requestObject interface{}
+	//if cachedProposal.Status == www.PropStatusPublic {
+	//	isVettedProposal = true
+	//	requestObject = pd.GetVetted{
+	//		Token:     propDetails.Token,
+	//		Challenge: hex.EncodeToString(challenge),
+	//	}
+	//} else {
+	//	isVettedProposal = false
+	//	requestObject = pd.GetUnvetted{
+	//		Token:     propDetails.Token,
+	//		Challenge: hex.EncodeToString(challenge),
+	//	}
+	//}
 
-	if b.test {
-		reply.Proposal = cachedProposal
-		return &reply, nil
-	}
+	//if b.test {
+	//	reply.Proposal = cachedProposal
+	//	return &reply, nil
+	//}
 
-	// The title and files for unvetted proposals should not be viewable by
-	// non-admins; only the proposal meta data (status, censorship data, etc)
-	// should be publicly viewable.
-	isUserAdmin := user != nil && user.Admin
-	if !isVettedProposal && !isUserAdmin {
-		reply.Proposal = www.ProposalRecord{
-			Status:           cachedProposal.Status,
-			Timestamp:        cachedProposal.Timestamp,
-			PublicKey:        cachedProposal.PublicKey,
-			Signature:        cachedProposal.Signature,
-			CensorshipRecord: cachedProposal.CensorshipRecord,
-			NumComments:      cachedProposal.NumComments,
-		}
+	//// The title and files for unvetted proposals should not be viewable by
+	//// non-admins; only the proposal meta data (status, censorship data, etc)
+	//// should be publicly viewable.
+	//isUserAdmin := user != nil && user.Admin
+	//if !isVettedProposal && !isUserAdmin {
+	//	reply.Proposal = www.ProposalRecord{
+	//		Status:           cachedProposal.Status,
+	//		Timestamp:        cachedProposal.Timestamp,
+	//		PublicKey:        cachedProposal.PublicKey,
+	//		Signature:        cachedProposal.Signature,
+	//		CensorshipRecord: cachedProposal.CensorshipRecord,
+	//		NumComments:      cachedProposal.NumComments,
+	//	}
 
-		if user != nil {
-			stringUserID := cachedProposal.UserId
-			userID, err := strconv.ParseUint(stringUserID, 10, 64)
-			if err != nil {
-				return nil, err
-			}
+	//	if user != nil {
+	//		stringUserID := cachedProposal.UserId
+	//		userID, err := strconv.ParseUint(stringUserID, 10, 64)
+	//		if err != nil {
+	//			return nil, err
+	//		}
 
-			if user.ID == userID {
-				reply.Proposal.Name = cachedProposal.Name
-			}
-		}
-		return &reply, nil
-	}
+	//		if user.ID == userID {
+	//			reply.Proposal.Name = cachedProposal.Name
+	//		}
+	//	}
+	//	return &reply, nil
+	//}
 
-	var route string
-	if isVettedProposal {
-		route = pd.GetVettedRoute
-	} else {
-		route = pd.GetUnvettedRoute
-	}
+	//var route string
+	//if isVettedProposal {
+	//	route = pd.GetVettedRoute
+	//} else {
+	//	route = pd.GetUnvettedRoute
+	//}
 
-	responseBody, err := b.makeRequest(http.MethodPost, route, requestObject)
-	if err != nil {
-		return nil, err
-	}
+	//responseBody, err := b.makeRequest(http.MethodPost, route, requestObject)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	var response string
-	var fullRecord pd.Record
-	if isVettedProposal {
-		var pdReply pd.GetVettedReply
-		err = json.Unmarshal(responseBody, &pdReply)
-		if err != nil {
-			return nil, fmt.Errorf("Could not unmarshal "+
-				"GetVettedReply: %v", err)
-		}
+	//var response string
+	//var fullRecord pd.Record
+	//if isVettedProposal {
+	//	var pdReply pd.GetVettedReply
+	//	err = json.Unmarshal(responseBody, &pdReply)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("Could not unmarshal "+
+	//			"GetVettedReply: %v", err)
+	//	}
 
-		response = pdReply.Response
-		fullRecord = pdReply.Record
-	} else {
-		var pdReply pd.GetUnvettedReply
-		err = json.Unmarshal(responseBody, &pdReply)
-		if err != nil {
-			return nil, fmt.Errorf("Could not unmarshal "+
-				"GetUnvettedReply: %v", err)
-		}
+	//	response = pdReply.Response
+	//	fullRecord = pdReply.Record
+	//} else {
+	//	var pdReply pd.GetUnvettedReply
+	//	err = json.Unmarshal(responseBody, &pdReply)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("Could not unmarshal "+
+	//			"GetUnvettedReply: %v", err)
+	//	}
 
-		response = pdReply.Response
-		fullRecord = pdReply.Record
-	}
+	//	response = pdReply.Response
+	//	fullRecord = pdReply.Record
+	//}
 
-	// Verify the challenge.
-	err = util.VerifyChallenge(b.cfg.Identity, challenge, response)
-	if err != nil {
-		return nil, err
-	}
+	//// Verify the challenge.
+	//err = util.VerifyChallenge(b.cfg.Identity, challenge, response)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	reply.Proposal = convertPropFromInventoryRecord(&inventoryRecord{
-		record:   fullRecord,
-		changes:  p.changes,
-		comments: p.comments,
-	}, b.userPubkeys)
-	return &reply, nil
+	//reply.Proposal = convertPropFromInventoryRecord(&inventoryRecord{
+	//	record:   fullRecord,
+	//	changes:  p.changes,
+	//	comments: p.comments,
+	//}, b.userPubkeys)
+	//return &reply, nil
 }
 
 // ProcessComment processes a submitted comment.  It ensures the proposal and
 // the parent exists.  A parent ID of 0 indicates that it is a comment on the
 // proposal whereas non-zero indicates that it is a reply to a comment.
-func (b *backend) ProcessComment(c www.NewComment, user *database.User) (*www.NewCommentReply, error) {
+func (b *backend) ProcessComment(c decredplugin.NewComment, user *database.User) (*decredplugin.NewCommentReply, error) {
 	log.Debugf("ProcessComment: %v %v", c.Token, user.ID)
+	return nil, fmt.Errorf("ProcessComment")
 
-	err := checkPublicKeyAndSignature(user, c.PublicKey, c.Signature,
-		c.Token, c.ParentID, c.Comment)
-	if err != nil {
-		return nil, err
-	}
+	//err := checkPublicKeyAndSignature(user, c.PublicKey, c.Signature,
+	//	c.Token, c.ParentID, c.Comment)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	b.Lock()
-	defer b.Unlock()
-	m, ok := b.inventory[c.Token]
-	if !ok {
-		return nil, www.UserError{
-			ErrorCode: www.ErrorStatusProposalNotFound,
-		}
-	}
+	//b.Lock()
+	//defer b.Unlock()
+	//m, ok := b.inventory[c.Token]
+	//if !ok {
+	//	return nil, www.UserError{
+	//		ErrorCode: www.ErrorStatusProposalNotFound,
+	//	}
+	//}
 
-	// See if we are commenting on a comment, yo dawg.
-	if c.ParentID == "" {
-		// "" means top level comment; we need it to be "0" for the
-		// underlying code to understand that.
-		c.ParentID = "0"
-	}
-	pid, err := strconv.ParseUint(c.ParentID, 10, 64)
-	if err != nil {
-		return nil, www.UserError{
-			ErrorCode: www.ErrorStatusCommentNotFound,
-		}
-	}
-	if pid != 0 {
-		_, ok = m.comments[pid]
-		if !ok {
-			return nil, www.UserError{
-				ErrorCode: www.ErrorStatusCommentNotFound,
-			}
-		}
-	}
+	//// See if we are commenting on a comment, yo dawg.
+	//if c.ParentID == "" {
+	//	// "" means top level comment; we need it to be "0" for the
+	//	// underlying code to understand that.
+	//	c.ParentID = "0"
+	//}
+	//pid, err := strconv.ParseUint(c.ParentID, 10, 64)
+	//if err != nil {
+	//	return nil, www.UserError{
+	//		ErrorCode: www.ErrorStatusCommentNotFound,
+	//	}
+	//}
+	//if pid != 0 {
+	//	_, ok = m.comments[pid]
+	//	if !ok {
+	//		return nil, www.UserError{
+	//			ErrorCode: www.ErrorStatusCommentNotFound,
+	//		}
+	//	}
+	//}
 
-	return b.addComment(c, user.ID)
+	//return b.addComment(c, user.ID)
 }
 
 // ProcessCommentGet returns all comments for a given proposal.
-func (b *backend) ProcessCommentGet(token string) (*www.GetCommentsReply, error) {
+func (b *backend) ProcessCommentGet(token string) (*decredplugin.GetCommentsReply, error) {
 	log.Debugf("ProcessCommentGet: %v", token)
 
-	c, err := b.getComments(token)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+	return nil, fmt.Errorf("ProcessCommentGet")
+	//c, err := b.getComments(token)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return c, nil
 }
 
 // ProcessUserProposals returns the proposals for the given user.
@@ -1907,22 +1907,10 @@ func NewBackend(cfg *config) (*backend, error) {
 		db:          db,
 		cfg:         cfg,
 		userPubkeys: make(map[string]string),
-		commentJournalDir: filepath.Join(cfg.DataDir,
-			defaultCommentJournalDir),
-		commentID: 1, // Replay will set this value
 	}
-
-	// Setup comments
-	os.MkdirAll(b.commentJournalDir, 0744)
 
 	// Setup pubkey-userid map
 	err = b.initUserPubkeys()
-	if err != nil {
-		return nil, err
-	}
-
-	// Flush comments
-	err = b.flushCommentJournals()
 	if err != nil {
 		return nil, err
 	}

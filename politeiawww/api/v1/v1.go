@@ -493,47 +493,6 @@ type PolicyReply struct {
 	BackendPublicKey     string   `json:"backendpublickey"`
 }
 
-// NewComment sends a comment from a user to a specific proposal.  Note that
-// the user is implied by the session.
-type NewComment struct {
-	Token     string `json:"token"`     // Censorship token
-	ParentID  string `json:"parentid"`  // Parent comment ID
-	Comment   string `json:"comment"`   // Comment
-	Signature string `json:"signature"` // Signature of Token+ParentID+Comment
-	PublicKey string `json:"publickey"`
-}
-
-// NewCommentReply return the site generated Comment ID or an error if
-// something went wrong.
-type NewCommentReply struct {
-	CommentID string `json:"commentid"` // Comment ID
-	Receipt   string `json:"receipt"`   // Signature of NewComment.Signature+CommentID
-}
-
-// GetComments retrieve all comments for a given proposal.
-type GetComments struct{}
-
-// Comment is the structure that describes the full server side content.  It
-// includes server side meta-data as well. Note that the receipt is the server side
-type Comment struct {
-	// Meta-data
-	Timestamp int64  `json:"timestamp"` // Received UNIX timestamp
-	UserID    string `json:"userid"`    // Originating user
-	CommentID string `json:"commentid"` // Comment ID
-
-	// Data
-	Token     string `json:"token"`     // Censorship token
-	ParentID  string `json:"parentid"`  // Parent comment ID
-	Comment   string `json:"comment"`   // Comment
-	Signature string `json:"signature"` // Client Signature of Token+ParentID+Comment
-	Receipt   string `json:"receipt"`   // Server signature of the client Signature
-}
-
-// GetCommentsReply returns the provided number of comments.
-type GetCommentsReply struct {
-	Comments []Comment `json:"comments"` // Comments
-}
-
 // ActiveVote obtains all proposals that have active votes.
 type ActiveVote struct{}
 

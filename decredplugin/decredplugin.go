@@ -4,15 +4,17 @@ import "encoding/json"
 
 // Plugin settings, kinda doesn;t go here but for now it is fine
 const (
-	Version              = "1"
-	ID                   = "decred"
-	CmdStartVote         = "startvote"
-	CmdCastVotes         = "castvotes"
-	CmdBestBlock         = "bestblock"
-	CmdProposalVotes     = "proposalvotes"
-	MDStreamVotes        = 13 // Votes
-	MDStreamVoteBits     = 14 // Vote bits and mask
-	MDStreamVoteSnapshot = 15 // Vote tickets and start/end parameters
+	Version                = "1"
+	ID                     = "decred"
+	CmdStartVote           = "startvote"
+	CmdCastVotes           = "castvotes"
+	CmdBestBlock           = "bestblock"
+	CmdProposalVotes       = "proposalvotes"
+	MDStreamComments       = 10 // Comments
+	MDStreamCommentsUpDown = 11 // Comments up/down voting
+	MDStreamVotes          = 13 // Votes
+	MDStreamVoteBits       = 14 // Vote bits and mask
+	MDStreamVoteSnapshot   = 15 // Vote tickets and start/end parameters
 )
 
 // CastVote is a signed vote.
@@ -198,4 +200,45 @@ func DecodeVoteResultsReply(payload []byte) (*VoteResultsReply, error) {
 	}
 
 	return &v, nil
+}
+
+// Comment is the structure that describes the full server side content.  It
+// includes server side meta-data as well. Note that the receipt is the server side
+type Comment struct {
+	// Meta-data
+	Timestamp int64  `json:"timestamp"` // Received UNIX timestamp
+	UserID    string `json:"userid"`    // Originating user
+	CommentID string `json:"commentid"` // Comment ID
+
+	// Data
+	Token     string `json:"token"`     // Censorship token
+	ParentID  string `json:"parentid"`  // Parent comment ID
+	Comment   string `json:"comment"`   // Comment
+	Signature string `json:"signature"` // Client Signature of Token+ParentID+Comment
+	Receipt   string `json:"receipt"`   // Server signature of the client Signature
+}
+
+// NewComment sends a comment from a user to a specific proposal.  Note that
+// the user is implied by the session.
+type NewComment struct {
+	Token     string `json:"token"`     // Censorship token
+	ParentID  string `json:"parentid"`  // Parent comment ID
+	Comment   string `json:"comment"`   // Comment
+	Signature string `json:"signature"` // Signature of Token+ParentID+Comment
+	PublicKey string `json:"publickey"`
+}
+
+// NewCommentReply return the site generated Comment ID or an error if
+// something went wrong.
+type NewCommentReply struct {
+	CommentID string `json:"commentid"` // Comment ID
+	Receipt   string `json:"receipt"`   // Signature of NewComment.Signature+CommentID
+}
+
+// GetComments retrieve all comments for a given proposal.
+type GetComments struct{}
+
+// GetCommentsReply returns the provided number of comments.
+type GetCommentsReply struct {
+	Comments []Comment `json:"comments"` // Comments
 }

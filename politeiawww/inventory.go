@@ -19,12 +19,12 @@ var (
 )
 
 type inventoryRecord struct {
-	record     pd.Record                   // actual record
-	proposalMD BackendProposalMetadata     // proposal metadata
-	comments   map[uint64]BackendComment   // [token][parent]comment
-	changes    []MDStreamChanges           // changes metadata
-	votebits   decredplugin.Vote           // vote bits and options
-	voting     decredplugin.StartVoteReply // voting metadata
+	record     pd.Record               // actual record
+	proposalMD BackendProposalMetadata // proposal metadata
+	//comments   map[uint64]BackendComment   // [token][parent]comment
+	changes  []MDStreamChanges           // changes metadata
+	votebits decredplugin.Vote           // vote bits and options
+	voting   decredplugin.StartVoteReply // voting metadata
 }
 
 // proposalsRequest is used for passing parameters into the
@@ -41,8 +41,8 @@ type proposalsRequest struct {
 // This function must be called WITH the mutex held.
 func (b *backend) updateInventoryRecord(record pd.Record) {
 	b.inventory[record.CensorshipRecord.Token] = &inventoryRecord{
-		record:   record,
-		comments: make(map[uint64]BackendComment),
+		record: record,
+		//comments: make(map[uint64]BackendComment),
 	}
 }
 
@@ -145,14 +145,14 @@ func (b *backend) loadRecord(v pd.Record) {
 					err)
 				continue
 			}
-		case mdStreamComments:
-			err = b.loadComments(t, m.Payload)
-			if err != nil {
-				log.Errorf("initializeInventory "+
-					"could not load comments: %v",
-					err)
-				continue
-			}
+		//case mdStreamComments:
+		//	err = b.loadComments(t, m.Payload)
+		//	if err != nil {
+		//		log.Errorf("initializeInventory "+
+		//			"could not load comments: %v",
+		//			err)
+		//		continue
+		//	}
 		case mdStreamChanges:
 			err = b.loadChanges(t, m.Payload)
 			if err != nil {
@@ -238,7 +238,9 @@ func (b *backend) getProposals(pr proposalsRequest) []www.ProposalRecord {
 		v := convertPropFromInventoryRecord(vv, b.userPubkeys)
 
 		// Set the number of comments.
-		v.NumComments = uint(len(vv.comments))
+		//v.NumComments = uint(len(vv.comments))
+		// XXX set it to something stupid to break things
+		v.NumComments = 0xffffffff
 
 		// Look up and set the user id.
 		var ok bool

@@ -121,7 +121,8 @@ func convertPropFromInventoryRecord(r *inventoryRecord, userPubkeys map[string]s
 	}
 
 	// Set the comments num.
-	proposal.NumComments = uint(len(r.comments))
+	// proposal.NumComments = uint(len(r.comments))
+	log.Errorf("not setting comments in inventory")
 
 	// Set the user id.
 	var ok bool
