@@ -241,6 +241,26 @@ func (g *gitBackEnd) pluginBestBlock() (string, error) {
 	return strconv.FormatUint(uint64(bb.Height), 10), nil
 }
 
+func (g *gitBackEnd) pluginNewComment(payload string) (string, error) {
+	comment, err := decredplugin.DecodeNewComment([]byte(payload))
+	if err != nil {
+		return "", fmt.Errorf("DecodeNewComment %v", err)
+	}
+
+	// Add comment to journal
+	_ = comment
+
+	// Encode reply
+	ncr := decredplugin.NewCommentReply{}
+	ncrb, err := decredplugin.EncodeNewCommentReply(ncr)
+	if err != nil {
+		return "", fmt.Errorf("EncodeNewCommentReply: %v", err)
+	}
+
+	// return success and encoded answer
+	return string(ncrb), nil
+}
+
 func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
 	vote, err := decredplugin.DecodeVote([]byte(payload))
 	if err != nil {

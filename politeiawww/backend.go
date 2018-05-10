@@ -1426,121 +1426,121 @@ func (b *backend) ProcessSetProposalStatus(sps www.SetProposalStatus, user *data
 // ProcessProposalDetails tries to fetch the full details of a proposal from politeiad.
 func (b *backend) ProcessProposalDetails(propDetails www.ProposalsDetails, user *database.User) (*www.ProposalDetailsReply, error) {
 	log.Debugf("ProcessProposalDetails")
-	return nil, fmt.Errorf("ProcessProposalDetails")
-	//var reply www.ProposalDetailsReply
-	//challenge, err := util.Random(pd.ChallengeSize)
-	//if err != nil {
-	//	return nil, err
-	//}
 
-	//b.RLock()
-	//p, ok := b.inventory[propDetails.Token]
-	//if !ok {
-	//	b.RUnlock()
-	//	return nil, www.UserError{
-	//		ErrorCode: www.ErrorStatusProposalNotFound,
-	//	}
-	//}
-	//b.RUnlock()
-	//cachedProposal := convertPropFromInventoryRecord(p, b.userPubkeys)
+	var reply www.ProposalDetailsReply
+	challenge, err := util.Random(pd.ChallengeSize)
+	if err != nil {
+		return nil, err
+	}
 
-	//var isVettedProposal bool
-	//var requestObject interface{}
-	//if cachedProposal.Status == www.PropStatusPublic {
-	//	isVettedProposal = true
-	//	requestObject = pd.GetVetted{
-	//		Token:     propDetails.Token,
-	//		Challenge: hex.EncodeToString(challenge),
-	//	}
-	//} else {
-	//	isVettedProposal = false
-	//	requestObject = pd.GetUnvetted{
-	//		Token:     propDetails.Token,
-	//		Challenge: hex.EncodeToString(challenge),
-	//	}
-	//}
+	b.RLock()
+	p, ok := b.inventory[propDetails.Token]
+	if !ok {
+		b.RUnlock()
+		return nil, www.UserError{
+			ErrorCode: www.ErrorStatusProposalNotFound,
+		}
+	}
+	b.RUnlock()
+	cachedProposal := convertPropFromInventoryRecord(p, b.userPubkeys)
 
-	//if b.test {
-	//	reply.Proposal = cachedProposal
-	//	return &reply, nil
-	//}
+	var isVettedProposal bool
+	var requestObject interface{}
+	if cachedProposal.Status == www.PropStatusPublic {
+		isVettedProposal = true
+		requestObject = pd.GetVetted{
+			Token:     propDetails.Token,
+			Challenge: hex.EncodeToString(challenge),
+		}
+	} else {
+		isVettedProposal = false
+		requestObject = pd.GetUnvetted{
+			Token:     propDetails.Token,
+			Challenge: hex.EncodeToString(challenge),
+		}
+	}
 
-	//// The title and files for unvetted proposals should not be viewable by
-	//// non-admins; only the proposal meta data (status, censorship data, etc)
-	//// should be publicly viewable.
-	//isUserAdmin := user != nil && user.Admin
-	//if !isVettedProposal && !isUserAdmin {
-	//	reply.Proposal = www.ProposalRecord{
-	//		Status:           cachedProposal.Status,
-	//		Timestamp:        cachedProposal.Timestamp,
-	//		PublicKey:        cachedProposal.PublicKey,
-	//		Signature:        cachedProposal.Signature,
-	//		CensorshipRecord: cachedProposal.CensorshipRecord,
-	//		NumComments:      cachedProposal.NumComments,
-	//	}
+	if b.test {
+		reply.Proposal = cachedProposal
+		return &reply, nil
+	}
 
-	//	if user != nil {
-	//		stringUserID := cachedProposal.UserId
-	//		userID, err := strconv.ParseUint(stringUserID, 10, 64)
-	//		if err != nil {
-	//			return nil, err
-	//		}
+	// The title and files for unvetted proposals should not be viewable by
+	// non-admins; only the proposal meta data (status, censorship data, etc)
+	// should be publicly viewable.
+	isUserAdmin := user != nil && user.Admin
+	if !isVettedProposal && !isUserAdmin {
+		reply.Proposal = www.ProposalRecord{
+			Status:           cachedProposal.Status,
+			Timestamp:        cachedProposal.Timestamp,
+			PublicKey:        cachedProposal.PublicKey,
+			Signature:        cachedProposal.Signature,
+			CensorshipRecord: cachedProposal.CensorshipRecord,
+			NumComments:      cachedProposal.NumComments,
+		}
 
-	//		if user.ID == userID {
-	//			reply.Proposal.Name = cachedProposal.Name
-	//		}
-	//	}
-	//	return &reply, nil
-	//}
+		if user != nil {
+			stringUserID := cachedProposal.UserId
+			userID, err := strconv.ParseUint(stringUserID, 10, 64)
+			if err != nil {
+				return nil, err
+			}
 
-	//var route string
-	//if isVettedProposal {
-	//	route = pd.GetVettedRoute
-	//} else {
-	//	route = pd.GetUnvettedRoute
-	//}
+			if user.ID == userID {
+				reply.Proposal.Name = cachedProposal.Name
+			}
+		}
+		return &reply, nil
+	}
 
-	//responseBody, err := b.makeRequest(http.MethodPost, route, requestObject)
-	//if err != nil {
-	//	return nil, err
-	//}
+	var route string
+	if isVettedProposal {
+		route = pd.GetVettedRoute
+	} else {
+		route = pd.GetUnvettedRoute
+	}
 
-	//var response string
-	//var fullRecord pd.Record
-	//if isVettedProposal {
-	//	var pdReply pd.GetVettedReply
-	//	err = json.Unmarshal(responseBody, &pdReply)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("Could not unmarshal "+
-	//			"GetVettedReply: %v", err)
-	//	}
+	responseBody, err := b.makeRequest(http.MethodPost, route, requestObject)
+	if err != nil {
+		return nil, err
+	}
 
-	//	response = pdReply.Response
-	//	fullRecord = pdReply.Record
-	//} else {
-	//	var pdReply pd.GetUnvettedReply
-	//	err = json.Unmarshal(responseBody, &pdReply)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("Could not unmarshal "+
-	//			"GetUnvettedReply: %v", err)
-	//	}
+	var response string
+	var fullRecord pd.Record
+	if isVettedProposal {
+		var pdReply pd.GetVettedReply
+		err = json.Unmarshal(responseBody, &pdReply)
+		if err != nil {
+			return nil, fmt.Errorf("Could not unmarshal "+
+				"GetVettedReply: %v", err)
+		}
 
-	//	response = pdReply.Response
-	//	fullRecord = pdReply.Record
-	//}
+		response = pdReply.Response
+		fullRecord = pdReply.Record
+	} else {
+		var pdReply pd.GetUnvettedReply
+		err = json.Unmarshal(responseBody, &pdReply)
+		if err != nil {
+			return nil, fmt.Errorf("Could not unmarshal "+
+				"GetUnvettedReply: %v", err)
+		}
 
-	//// Verify the challenge.
-	//err = util.VerifyChallenge(b.cfg.Identity, challenge, response)
-	//if err != nil {
-	//	return nil, err
-	//}
+		response = pdReply.Response
+		fullRecord = pdReply.Record
+	}
 
-	//reply.Proposal = convertPropFromInventoryRecord(&inventoryRecord{
-	//	record:   fullRecord,
-	//	changes:  p.changes,
-	//	comments: p.comments,
-	//}, b.userPubkeys)
-	//return &reply, nil
+	// Verify the challenge.
+	err = util.VerifyChallenge(b.cfg.Identity, challenge, response)
+	if err != nil {
+		return nil, err
+	}
+
+	reply.Proposal = convertPropFromInventoryRecord(&inventoryRecord{
+		record:  fullRecord,
+		changes: p.changes,
+		//comments: p.comments, // XXX add comments back
+	}, b.userPubkeys)
+	return &reply, nil
 }
 
 // ProcessComment processes a submitted comment.  It ensures the proposal and
@@ -1548,7 +1548,52 @@ func (b *backend) ProcessProposalDetails(propDetails www.ProposalsDetails, user 
 // proposal whereas non-zero indicates that it is a reply to a comment.
 func (b *backend) ProcessComment(c decredplugin.NewComment, user *database.User) (*decredplugin.NewCommentReply, error) {
 	log.Debugf("ProcessComment: %v %v", c.Token, user.ID)
-	return nil, fmt.Errorf("ProcessComment")
+
+	challenge, err := util.Random(pd.ChallengeSize)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := decredplugin.EncodeNewComment(c)
+	if err != nil {
+		return nil, err
+	}
+
+	pc := pd.PluginCommand{
+		Challenge: hex.EncodeToString(challenge),
+		ID:        decredplugin.ID,
+		Command:   decredplugin.CmdNewComment,
+		CommandID: decredplugin.CmdNewComment,
+		Payload:   string(payload),
+	}
+
+	responseBody, err := b.makeRequest(http.MethodPost,
+		pd.PluginCommandRoute, pc)
+	if err != nil {
+		return nil, err
+	}
+
+	var reply pd.PluginCommandReply
+	err = json.Unmarshal(responseBody, &reply)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal "+
+			"PluginCommandReply: %v", err)
+	}
+
+	// Verify the challenge.
+	err = util.VerifyChallenge(b.cfg.Identity, challenge, reply.Response)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode plugin reply
+	ncr, err := decredplugin.DecodeNewCommentReply([]byte(reply.Payload))
+	if err != nil {
+		return nil, err
+	}
+	_ = ncr
+
+	return nil, fmt.Errorf("fixme")
 
 	//err := checkPublicKeyAndSignature(user, c.PublicKey, c.Signature,
 	//	c.Token, c.ParentID, c.Comment)

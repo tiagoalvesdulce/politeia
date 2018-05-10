@@ -9,6 +9,7 @@ const (
 	CmdStartVote           = "startvote"
 	CmdCastVotes           = "castvotes"
 	CmdBestBlock           = "bestblock"
+	CmdNewComment          = "newcomment"
 	CmdProposalVotes       = "proposalvotes"
 	MDStreamComments       = 10 // Comments
 	MDStreamCommentsUpDown = 11 // Comments up/down voting
@@ -228,11 +229,55 @@ type NewComment struct {
 	PublicKey string `json:"publickey"`
 }
 
+// EncodeNewComment encodes NewComment into a JSON byte slice.
+func EncodeNewComment(nc NewComment) ([]byte, error) {
+	b, err := json.Marshal(nc)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// DecodeNewComment decodes a JSON byte slice into a NewComment
+func DecodeNewComment(payload []byte) (*NewComment, error) {
+	var nc NewComment
+
+	err := json.Unmarshal(payload, &nc)
+	if err != nil {
+		return nil, err
+	}
+
+	return &nc, nil
+}
+
 // NewCommentReply return the site generated Comment ID or an error if
 // something went wrong.
 type NewCommentReply struct {
 	CommentID string `json:"commentid"` // Comment ID
 	Receipt   string `json:"receipt"`   // Signature of NewComment.Signature+CommentID
+}
+
+// EncodeNewCommentReply encodes NewCommentReply into a JSON byte slice.
+func EncodeNewCommentReply(ncr NewCommentReply) ([]byte, error) {
+	b, err := json.Marshal(ncr)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// DecodeNewCommentReply decodes a JSON byte slice into a NewCommentReply.
+func DecodeNewCommentReply(payload []byte) (*NewCommentReply, error) {
+	var ncr NewCommentReply
+
+	err := json.Unmarshal(payload, &ncr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ncr, nil
 }
 
 // GetComments retrieve all comments for a given proposal.

@@ -636,30 +636,30 @@ func (p *politeiawww) handleAllUnvetted(w http.ResponseWriter, r *http.Request) 
 func (p *politeiawww) handleNewComment(w http.ResponseWriter, r *http.Request) {
 	log.Tracef("handleNewComment")
 
-	//var sc v1.NewComment
-	//decoder := json.NewDecoder(r.Body)
-	//if err := decoder.Decode(&sc); err != nil {
-	//	RespondWithError(w, r, 0, "handleNewComment: unmarshal", v1.UserError{
-	//		ErrorCode: v1.ErrorStatusInvalidInput,
-	//	})
-	//	return
-	//}
+	var sc v1.NewComment
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&sc); err != nil {
+		RespondWithError(w, r, 0, "handleNewComment: unmarshal", v1.UserError{
+			ErrorCode: v1.ErrorStatusInvalidInput,
+		})
+		return
+	}
 
-	//user, err := p.getSessionUser(r)
-	//if err != nil {
-	//	RespondWithError(w, r, 0,
-	//		"handleNewComment: getSessionUser %v", err)
-	//	return
-	//}
+	user, err := p.getSessionUser(r)
+	if err != nil {
+		RespondWithError(w, r, 0,
+			"handleNewComment: getSessionUser %v", err)
+		return
+	}
 
-	//cr, err := p.backend.ProcessComment(sc, user)
-	//if err != nil {
-	//	RespondWithError(w, r, 0,
-	//		"handleNewComment: ProcessComment %v", err)
-	//	return
-	//}
+	cr, err := p.backend.ProcessComment(sc.Comment, user)
+	if err != nil {
+		RespondWithError(w, r, 0,
+			"handleNewComment: ProcessComment %v", err)
+		return
+	}
 
-	//util.RespondWithJSON(w, http.StatusOK, cr)
+	util.RespondWithJSON(w, http.StatusOK, cr)
 }
 
 // handleCommentsGet handles batched comments get.

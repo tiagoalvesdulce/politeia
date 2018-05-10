@@ -1961,6 +1961,9 @@ func (g *gitBackEnd) Plugin(command, payload string) (string, string, error) {
 	case decredplugin.CmdBestBlock:
 		payload, err := g.pluginBestBlock()
 		return decredplugin.CmdBestBlock, payload, err
+	case decredplugin.CmdNewComment:
+		payload, err := g.pluginNewComment(payload)
+		return decredplugin.CmdNewComment, payload, err
 	}
 	return "", "", fmt.Errorf("invalid payload command") // XXX this needs to become a type error
 }
