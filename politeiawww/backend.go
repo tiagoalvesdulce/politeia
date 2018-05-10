@@ -1549,11 +1549,21 @@ func (b *backend) ProcessProposalDetails(propDetails www.ProposalsDetails, user 
 func (b *backend) ProcessComment(c decredplugin.NewComment, user *database.User) (*decredplugin.NewCommentReply, error) {
 	log.Debugf("ProcessComment: %v %v", c.Token, user.ID)
 
+	// Verify authenticity.
+	err := checkPublicKeyAndSignature(user, c.PublicKey, c.Signature,
+		c.Token, c.ParentID, c.Comment)
+	if err != nil {
+		return nil, err
+	}
+
 	challenge, err := util.Random(pd.ChallengeSize)
 	if err != nil {
 		return nil, err
 	}
 
+	// Add user id to command
+	// XXX we probably want to make a new command instead of overloading
+	c.UserID = strconv.FormatUint(user.ID, 10)
 	payload, err := decredplugin.EncodeNewComment(c)
 	if err != nil {
 		return nil, err
@@ -1591,9 +1601,8 @@ func (b *backend) ProcessComment(c decredplugin.NewComment, user *database.User)
 	if err != nil {
 		return nil, err
 	}
-	_ = ncr
 
-	return nil, fmt.Errorf("fixme")
+	return ncr, nil
 
 	//err := checkPublicKeyAndSignature(user, c.PublicKey, c.Signature,
 	//	c.Token, c.ParentID, c.Comment)

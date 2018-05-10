@@ -1,6 +1,7 @@
 package gitbe
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
@@ -28,6 +29,10 @@ import (
 
 const (
 	decredPluginIdentity = "fullidentity"
+	decredPluginJournals = "journals"
+
+	defaultCommentIDFilename = "commentid.txt"
+	defaultCommentFilename   = "comments.journal"
 )
 
 var (
@@ -75,6 +80,77 @@ func setDecredPluginSetting(key, value string) {
 		return
 	}
 	decredPluginSettings[key] = value
+}
+
+func (g *gitBackEnd) propExists(token string) bool {
+	_, err := os.Stat(filepath.Join(g.vetted, token))
+	return err == nil
+}
+
+func (g *gitBackEnd) getNewCid(token string) (string, error) {
+	dir := filepath.Join(g.journals, token)
+	err := os.MkdirAll(dir, 0774)
+	if err != nil {
+		return "", err
+	}
+
+	filename := filepath.Join(dir, defaultCommentIDFilename)
+
+	g.Lock()
+	defer g.Unlock()
+
+	fh, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	// Determine if file is empty
+	fi, err := fh.Stat()
+	if err != nil {
+		return "", err
+	}
+	if fi.Size() == 0 {
+		// First comment id
+		_, err := fmt.Fprintf(fh, "0\n")
+		if err != nil {
+			return "", err
+		}
+		return "0", nil
+	}
+
+	// Only allow one line
+	var cid string
+	s := bufio.NewScanner(fh)
+	for i := 0; s.Scan(); i++ {
+		if i != 0 {
+			return "", fmt.Errorf("comment id file corrupt")
+		}
+
+		c, err := strconv.ParseUint(s.Text(), 10, 64)
+		if err != nil {
+			return "", err
+		}
+
+		// Increment comment id
+		c++
+		cid = strconv.FormatUint(c, 10)
+
+		// Write back new comment id
+		_, err = fh.Seek(0, os.SEEK_SET)
+		if err != nil {
+			return "", err
+		}
+		_, err = fmt.Fprintf(fh, "%v\n", c)
+		if err != nil {
+			return "", err
+		}
+	}
+	if err := s.Err(); err != nil {
+		return "", err
+	}
+
+	return cid, nil
 }
 
 // verifyMessage verifies a message is properly signed.
@@ -242,16 +318,70 @@ func (g *gitBackEnd) pluginBestBlock() (string, error) {
 }
 
 func (g *gitBackEnd) pluginNewComment(payload string) (string, error) {
+	// XXX this should become part of some sort of context
+	fiJSON, ok := decredPluginSettings[decredPluginIdentity]
+	if !ok {
+		return "", fmt.Errorf("full identity not set")
+	}
+	fi, err := identity.UnmarshalFullIdentity([]byte(fiJSON))
+	if err != nil {
+		return "", err
+	}
+
+	// Decode comment
 	comment, err := decredplugin.DecodeNewComment([]byte(payload))
 	if err != nil {
-		return "", fmt.Errorf("DecodeNewComment %v", err)
+		return "", fmt.Errorf("DecodeNewComment: %v", err)
+	}
+
+	// Verify proposal exists, we can run this lockless
+	if !g.propExists(comment.Token) {
+		return "", fmt.Errorf("unknown proposal: %v", comment.Token)
+	}
+
+	// Do some cheap things before expensive calls
+	cfilename := filepath.Join(g.journals, comment.Token,
+		defaultCommentFilename)
+
+	// Sign signature
+	r := fi.SignMessage([]byte(comment.Signature))
+	receipt := hex.EncodeToString(r[:])
+
+	// Create new comment id
+	cid, err := g.getNewCid(comment.Token)
+	if err != nil {
+		return "", fmt.Errorf("could not generate new comment id: %v",
+			err)
+	}
+
+	// Create Journal entry
+	c := decredplugin.Comment{
+		Token:     comment.Token,
+		ParentID:  comment.ParentID,
+		Comment:   comment.Comment,
+		Signature: comment.Signature,
+		UserID:    comment.UserID,
+		PublicKey: comment.PublicKey,
+		CommentID: cid,
+		Receipt:   receipt,
+		Timestamp: time.Now().Unix(),
+	}
+	blob, err := decredplugin.EncodeComment(c)
+	if err != nil {
+		return "", fmt.Errorf("EncodeComment: %v", err)
 	}
 
 	// Add comment to journal
-	_ = comment
+	err = g.journal.Journal(cfilename, string(blob))
+	if err != nil {
+		return "", fmt.Errorf("could not journal %v: %v", c.Token, err)
+	}
 
 	// Encode reply
-	ncr := decredplugin.NewCommentReply{}
+	ncr := decredplugin.NewCommentReply{
+		CommentID: cid,
+		Receipt:   receipt,
+	}
 	ncrb, err := decredplugin.EncodeNewCommentReply(ncr)
 	if err != nil {
 		return "", fmt.Errorf("EncodeNewCommentReply: %v", err)
@@ -269,7 +399,10 @@ func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
 
 	// XXX verify vote bits are sane
 
-	// XXX verify proposal exists
+	// Verify proposal exists
+	if !g.propExists(vote.Token) {
+		return "", fmt.Errorf("unknown proposal: %v", vote.Token)
+	}
 
 	// XXX verify proposal is in the right state
 
@@ -732,13 +865,11 @@ func (g *gitBackEnd) pluginProposalVotes(payload string) (string, error) {
 		return "", err
 	}
 
-	// Make sure proposal exists
+	// Verify proposal exists
 	// XXX should we return a NOT FOUND error here instead of percolating a
 	// 500 to the user?
-	filename := filepath.Join(g.vetted, vote.Token)
-	_, err = os.Stat(filename)
-	if err != nil {
-		return "", err
+	if !g.propExists(vote.Token) {
+		return "", fmt.Errorf("unknown proposal: %v", vote.Token)
 	}
 
 	// Prepare reply
@@ -751,7 +882,7 @@ func (g *gitBackEnd) pluginProposalVotes(payload string) (string, error) {
 		f, ff *os.File
 	)
 	// Fill out vote
-	filename = mdFilename(g.vetted, vote.Token,
+	filename := mdFilename(g.vetted, vote.Token,
 		decredplugin.MDStreamVoteBits)
 	ff, err = os.Open(filename)
 	if err != nil {

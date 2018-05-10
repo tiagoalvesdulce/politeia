@@ -353,11 +353,11 @@ func (g *gitBackEnd) gitInitRepo(path string, repoConfig map[string]string) erro
 		}
 	}
 
-	// Add .gitignore with the lock file name.
+	// Add empty .gitignore
 	// This makes the repo ready to go and we'll always use this as the
 	// initial commit.
-	err = ioutil.WriteFile(filepath.Join(path, ".gitignore"),
-		[]byte(LockFilename+"\n"), 0664)
+	err = ioutil.WriteFile(filepath.Join(path, ".gitignore"), []byte{},
+		0664)
 	if err != nil {
 		return err
 	}

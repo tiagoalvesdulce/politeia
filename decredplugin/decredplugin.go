@@ -206,17 +206,42 @@ func DecodeVoteResultsReply(payload []byte) (*VoteResultsReply, error) {
 // Comment is the structure that describes the full server side content.  It
 // includes server side meta-data as well. Note that the receipt is the server side
 type Comment struct {
-	// Meta-data
-	Timestamp int64  `json:"timestamp"` // Received UNIX timestamp
-	UserID    string `json:"userid"`    // Originating user
-	CommentID string `json:"commentid"` // Comment ID
-
 	// Data
 	Token     string `json:"token"`     // Censorship token
 	ParentID  string `json:"parentid"`  // Parent comment ID
 	Comment   string `json:"comment"`   // Comment
 	Signature string `json:"signature"` // Client Signature of Token+ParentID+Comment
+
+	// WWW metadata
+	UserID    string `json:"userid"`    // Originating user
+	PublicKey string `json:"publickey"` // Pubkey used for Signature
+
+	// D metadata
+	CommentID string `json:"commentid"` // Comment ID
 	Receipt   string `json:"receipt"`   // Server signature of the client Signature
+	Timestamp int64  `json:"timestamp"` // Received UNIX timestamp
+}
+
+// EncodeComment encodes Comment into a JSON byte slice.
+func EncodeComment(c Comment) ([]byte, error) {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// DecodeComment decodes a JSON byte slice into a Comment
+func DecodeComment(payload []byte) (*Comment, error) {
+	var c Comment
+
+	err := json.Unmarshal(payload, &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 // NewComment sends a comment from a user to a specific proposal.  Note that
@@ -226,7 +251,8 @@ type NewComment struct {
 	ParentID  string `json:"parentid"`  // Parent comment ID
 	Comment   string `json:"comment"`   // Comment
 	Signature string `json:"signature"` // Signature of Token+ParentID+Comment
-	PublicKey string `json:"publickey"`
+	UserID    string `json:"userid"`    // Originating user
+	PublicKey string `json:"publickey"` // Pubkey used for Signature
 }
 
 // EncodeNewComment encodes NewComment into a JSON byte slice.

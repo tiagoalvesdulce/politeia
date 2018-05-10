@@ -35,9 +35,6 @@ import (
 )
 
 const (
-	// Lockfile is the filesystem lock filename.  Export for external utilities.
-	LockFilename = ".lock"
-
 	// LockDuration is the maximum lock time duration allowed.  15 seconds
 	// is ~3x of anchoring without internet delay.
 	LockDuration = 15 * time.Second
@@ -114,6 +111,7 @@ type gitBackEnd struct {
 	db              *leveldb.DB      // Database
 	cron            *cron.Cron       // Scheduler for periodic tasks
 	activeNetParams *chaincfg.Params // indicator if we are running on testnet
+	journal         *Journal         // Journal context
 	shutdown        bool             // Backend is shutdown
 	root            string           // Root directory
 	unvetted        string           // Unvettend content
@@ -2131,14 +2129,16 @@ func New(anp *chaincfg.Params, root string, dcrtimeHost string, gitPath string, 
 		return nil, err
 	}
 	setDecredPluginSetting(decredPluginIdentity, string(idJSON))
+	setDecredPluginSetting(decredPluginJournals, g.journals)
 
 	// Create jounals path
+	// XXX this needs to move into plugin init
+	log.Infof("Journals directory: %v", g.journals)
 	err = os.MkdirAll(g.journals, 0760)
-	log.Infof("%v: %v", g.journals, err)
-
 	if err != nil {
 		return nil, err
 	}
+	g.journal = NewJournal()
 
 	err = g.newLocked()
 	if err != nil {
