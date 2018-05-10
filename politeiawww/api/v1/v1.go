@@ -541,3 +541,23 @@ type ProposalVotesReply struct {
 	Vote      decredplugin.Vote       `json:"vote"`      // Original vote
 	CastVotes []decredplugin.CastVote `json:"castvotes"` // Vote results
 }
+
+// NewComment sends a comment from a user to a specific proposal.  Note that
+// the user is implied by the session.
+type NewComment struct {
+	Comment decredplugin.NewComment `json:"newcomment"` // New comment
+}
+
+// NewCommentReply return the site generated Comment ID or an error if
+// something went wrong.
+type NewCommentReply struct {
+	Reply decredplugin.NewCommentReply `json:"newcommentreply"` // Comment + receipt
+}
+
+// GetComments retrieve all comments for a given proposal.
+type GetComments struct{}
+
+// GetCommentsReply returns the provided number of comments.
+type GetCommentsReply struct {
+	Comments []decredplugin.Comment `json:"comments"` // Comments
+}
