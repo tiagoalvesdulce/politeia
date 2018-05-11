@@ -1561,9 +1561,6 @@ func (b *backend) ProcessComment(c decredplugin.NewComment, user *database.User)
 		return nil, err
 	}
 
-	// Add user id to command
-	// XXX we probably want to make a new command instead of overloading
-	c.UserID = strconv.FormatUint(user.ID, 10)
 	payload, err := decredplugin.EncodeNewComment(c)
 	if err != nil {
 		return nil, err

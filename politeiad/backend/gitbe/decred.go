@@ -33,14 +33,53 @@ const (
 
 	defaultCommentIDFilename = "commentid.txt"
 	defaultCommentFilename   = "comments.journal"
+
+	commentJournalVersion   = "1"   // Version 1 of the comment journal
+	commentJournalActionAdd = "add" // Add comment
+	commentJournalActionDel = "del" // Delete comment
 )
+
+// CommentJournalAction prefixes and determines what the next structure is in
+// the JSON journal.
+// Version is used to determine what version of the comment journal structure
+// follows.
+// commentJournalActionAdd -> Comment
+// commentJournalActionDel -> CensorComment
+type CommentJournalAction struct {
+	Version string `json:"version"` //Version
+	Action  string `json:"action"`  // Add/Del
+}
 
 var (
 	decredPluginSettings map[string]string // [key]setting
 
 	// cached values, requires lock
 	decredPluginVoteCache = make(map[string]*decredplugin.Vote) // [token]vote
+
+	// Pregenerated journal actions
+	commentJournalAdd []byte
+	commentJournalDel []byte
 )
+
+// init is used to pregenerate the JSON journal actions.
+func init() {
+	var err error
+
+	commentJournalAdd, err = json.Marshal(CommentJournalAction{
+		Version: commentJournalVersion,
+		Action:  commentJournalActionAdd,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	commentJournalDel, err = json.Marshal(CommentJournalAction{
+		Version: commentJournalVersion,
+		Action:  commentJournalActionDel,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+}
 
 func getDecredPlugin(testnet bool) backend.Plugin {
 	decredPlugin := backend.Plugin{
@@ -342,6 +381,10 @@ func (g *gitBackEnd) pluginNewComment(payload string) (string, error) {
 	// Do some cheap things before expensive calls
 	cfilename := filepath.Join(g.journals, comment.Token,
 		defaultCommentFilename)
+	if comment.ParentID == "" {
+		// Empty ParentID means comment 0
+		comment.ParentID = "0"
+	}
 
 	// Sign signature
 	r := fi.SignMessage([]byte(comment.Signature))
@@ -360,7 +403,6 @@ func (g *gitBackEnd) pluginNewComment(payload string) (string, error) {
 		ParentID:  comment.ParentID,
 		Comment:   comment.Comment,
 		Signature: comment.Signature,
-		UserID:    comment.UserID,
 		PublicKey: comment.PublicKey,
 		CommentID: cid,
 		Receipt:   receipt,
@@ -372,7 +414,8 @@ func (g *gitBackEnd) pluginNewComment(payload string) (string, error) {
 	}
 
 	// Add comment to journal
-	err = g.journal.Journal(cfilename, string(blob))
+	err = g.journal.Journal(cfilename, string(commentJournalAdd)+
+		string(blob))
 	if err != nil {
 		return "", fmt.Errorf("could not journal %v: %v", c.Token, err)
 	}
