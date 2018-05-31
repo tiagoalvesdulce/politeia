@@ -775,21 +775,24 @@ func (g *gitBackEnd) pluginGetComments(payload string) (string, error) {
 }
 
 func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
-	vote, err := decredplugin.DecodeVote([]byte(payload))
+	log.Tracef("%v", payload)
+
+	vote, err := decredplugin.DecodeStartVote([]byte(payload))
 	if err != nil {
-		return "", fmt.Errorf("DecodeVote %v", err)
+		return "", fmt.Errorf("DecodeStartVote %v", err)
 	}
 
 	// XXX verify vote bits are sane
+	log.Tracef("%v", vote)
 
 	// Verify proposal exists
-	if !g.propExists(g.vetted, vote.Token) {
-		return "", fmt.Errorf("unknown proposal: %v", vote.Token)
+	if !g.propExists(g.vetted, vote.Vote.Token) {
+		return "", fmt.Errorf("unknown proposal: %v", vote.Vote.Token)
 	}
 
 	// XXX verify proposal is in the right state
 
-	token, err := util.ConvertStringToken(vote.Token)
+	token, err := util.ConvertStringToken(vote.Vote.Token)
 	if err != nil {
 		return "", fmt.Errorf("ConvertStringToken %v", err)
 	}
@@ -817,10 +820,10 @@ func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
 
 	// Make sure vote duration isn't too large. Assume < 2 weeks
 	// XXX calculate this value for testnet instead of using hard coded values.
-	if vote.Duration < 2016 || vote.Duration > 2016*2 {
+	if vote.Vote.Duration < 2016 || vote.Vote.Duration > 2016*2 {
 		// XXX return a user error instead of an internal error
 		return "", fmt.Errorf("invalid duration: %v (%v - %v)",
-			vote.Duration, 2016, 2016*2)
+			vote.Vote.Duration, 2016, 2016*2)
 	}
 
 	svr := decredplugin.StartVoteReply{
@@ -828,7 +831,7 @@ func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
 			10),
 		StartBlockHash: snapshotBlock.Hash,
 		EndHeight: strconv.FormatUint(uint64(snapshotBlock.Height+
-			vote.Duration), 10),
+			vote.Vote.Duration), 10),
 		EligibleTickets: snapshot,
 	}
 	svrb, err := decredplugin.EncodeStartVoteReply(svr)
@@ -851,7 +854,7 @@ func (g *gitBackEnd) pluginStartVote(payload string) (string, error) {
 	}
 
 	log.Infof("Vote started for: %v snapshot %v start %v end %v",
-		vote.Token, svr.StartBlockHash, svr.StartBlockHeight,
+		vote.Vote.Token, svr.StartBlockHash, svr.StartBlockHeight,
 		svr.EndHeight)
 
 	// return success and encoded answer

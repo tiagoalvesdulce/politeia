@@ -55,7 +55,7 @@ func convertVoteOptionFromWWW(vo www.VoteOption) decredplugin.VoteOption {
 func convertVoteOptionsFromWWW(vo []www.VoteOption) []decredplugin.VoteOption {
 	vor := make([]decredplugin.VoteOption, 0, len(vo))
 	for _, v := range vo {
-		convertVoteOptionFromWWW(v)
+		vor = append(vor, convertVoteOptionFromWWW(v))
 	}
 	return vor
 }
@@ -71,7 +71,9 @@ func convertVoteFromWWW(v www.Vote) decredplugin.Vote {
 
 func convertStartVoteFromWWW(sv www.StartVote) decredplugin.StartVote {
 	return decredplugin.StartVote{
-		Vote: convertVoteFromWWW(sv.Vote),
+		PublicKey: sv.PublicKey,
+		Vote:      convertVoteFromWWW(sv.Vote),
+		Signature: sv.Signature,
 	}
 }
 

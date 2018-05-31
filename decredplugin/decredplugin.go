@@ -85,10 +85,10 @@ type VoteOption struct {
 
 // Vote represents the vote options for vote that is identified by its token.
 type Vote struct {
-	Token    string `json:"token"`    // Token that identifies vote
-	Mask     uint64 `json:"mask"`     // Valid votebits
-	Duration uint32 `json:"duration"` // Duration in blocks
-	Options  []VoteOption
+	Token    string       `json:"token"`    // Token that identifies vote
+	Mask     uint64       `json:"mask"`     // Valid votebits
+	Duration uint32       `json:"duration"` // Duration in blocks
+	Options  []VoteOption `json:"options"`  // Vote option
 }
 
 // EncodeVote encodes Vote into a JSON byte slice.
@@ -111,7 +111,9 @@ func DecodeVote(payload []byte) (*Vote, error) {
 // StartVote instructs the plugin to commence voting on a proposal with the
 // provided vote bits.
 type StartVote struct {
-	Vote Vote `json:"vote"` // Vote + options
+	PublicKey string `json:"publickey"` // Key used for signature.
+	Vote      Vote   `json:"vote"`      // Vote + options
+	Signature string `json:"signature"` // Signature of Votehash
 }
 
 // EncodeStartVoteencodes StartVoteinto a JSON byte slice.

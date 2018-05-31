@@ -1906,11 +1906,12 @@ func (b *backend) ProcessCastVotes(ballot *www.Ballot) (*www.BallotReply, error)
 func (b *backend) ProcessStartVote(sv www.StartVote, user *database.User) (*www.StartVoteReply, error) {
 	log.Tracef("ProcessStartVote %v", sv.Vote.Token)
 
-	// XXX Verify user
-	//err := checkPublicKeyAndSignature(user, sv.PublicKey, sv.Signature, sv.Token)
-	//if err != nil {
-	//	return nil, err
-	//}
+	// Verify user
+	err := checkPublicKeyAndSignature(user, sv.PublicKey, sv.Signature,
+		sv.Vote.Token)
+	if err != nil {
+		return nil, err
+	}
 
 	// XXX validate vote bits
 
