@@ -79,7 +79,6 @@ and [`sample-politeiad.conf`](https://github.com/decred/politeia/blob/master/pol
     rpcuser=user
     rpcpass=pass
     rpccert="/Users/<username>/Library/Application Support/Politeiad/https.cert"
-    proxy=true
     testnet=true
 
 **note 1:** The rpccert path is referenced on macOS path. See above for
