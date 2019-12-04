@@ -229,7 +229,7 @@ script.
 
     cd $GOPATH/src/github.com/decred/politeia
     ./scripts/cmssetup.sh
-    
+
 
 #### 5. Build the programs:
 
@@ -391,8 +391,6 @@ data that is in the politeiad git repositories.
   automated fashion.
 
 * https://test-proposals.decred.org/ - testing/development instance of Politeia.
-
-* https://pi-staging.decred.org/ - politeia staging environment.
 
 * https://proposals.decred.org/ - live production instance of Politeia.
 
